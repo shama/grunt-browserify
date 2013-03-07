@@ -1,0 +1,1 @@
+module.exports = 'im a lib';

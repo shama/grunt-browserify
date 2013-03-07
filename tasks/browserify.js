@@ -2,72 +2,68 @@
  * grunt-browserify
  * https://github.com/pix/grunt-browserify
  *
- * Copyright (c) 2012 Camille Moncelier
+ * Copyright (c) 2013 Camille Moncelier
  * Licensed under the MIT license.
  */
 
 module.exports = function (grunt) {
   'use strict';
-  // Please see the grunt documentation for more information regarding task and
-  // helper creation: https://github.com/gruntjs/grunt/wiki/Creating-tasks
-  // ==========================================================================
-  // TASKS
-  // ==========================================================================
-  grunt.registerMultiTask('browserify', 'Your task description goes here.', function () {
 
-    var helpers = require('grunt-lib-legacyhelpers').init(grunt);
+  var browserify = require('browserify');
 
-    var browserify = require('browserify'),
-        b = browserify(this.data.options || {}),
-        files, src;
+  function getBrowserify(opts) {
+    var b = browserify(grunt.util._.omit(opts, [
+      'require', 'ignore', 'alias', 'prepend', 'append', 'before',
+    ]));
 
-    if (this.data.beforeHook) {
-      this.data.beforeHook.call(this, b);
-    }
+    // require
+    if (opts.require) { b.require(opts.require); }
 
-    (this.data.ignore || []).forEach(function (filepath) {
-      grunt.verbose.writeln('Ignoring "' + filepath + '"');
-      b.ignore(filepath);
+    // ignore
+    if (opts.ignore) { b.ignore(opts.ignore); }
+
+    // alias
+    Object.keys(opts.alias).forEach(function(from) {
+      var to = opts.alias[from];
+      grunt.verbose.writeln('Adding alias "' + from + '" to "' + to + '"');
+      b.alias(to, from);
     });
 
-    (this.data.requires || []).forEach(function (req) {
-      grunt.verbose.writeln('Adding "' + req + '" to the required module list');
-      b.require(req);
+    // prepend
+    var prepend = grunt.file.expand({filter: 'isFile'}, opts.prepend).map(function(filepath) {
+      return grunt.file.read(filepath);
+    }).join('');
+    b.prepend(prepend);
+
+    // append
+    var append = grunt.file.expand({filter: 'isFile'}, opts.append).map(function(filepath) {
+      return grunt.file.read(filepath);
+    }).join('');
+    b.append(append);
+
+    return b;
+  }
+
+  grunt.registerMultiTask('browserify', 'Compile with browserify.', function() {
+    var self = this;
+    var options = this.options({
+      alias: {}, prepend: [], append: [],
     });
+    this.files.forEach(function(file) {
+      var b = getBrowserify(options);
 
-    (this.data.aliases || []).forEach(function (alias) {
-      grunt.verbose.writeln('Adding "' + alias + '" to the aliases list');
+      // before for using plugins
+      if (typeof options.before === 'function') {
+        options.before.call(self, b);
+      }
 
-      b.alias.apply(b, alias.split(":"));
+      grunt.file.expand({filter: 'isFile'}, file.src).forEach(function(filepath) {
+        grunt.verbose.writeln('Adding "' + file.src + '" to the entry file list');
+        b.addEntry(filepath);
+      });
+      grunt.log.ok('Compiled to ' + file.dest);
+      grunt.file.write(file.dest, b.bundle());
     });
-
-    grunt.file.expandFiles(this.file.src || []).forEach(function (filepath) {
-      grunt.verbose.writeln('Adding "' + filepath + '" to the entry file list');
-      b.addEntry(filepath);
-    });
-
-    grunt.file.expandFiles(this.data.entries || []).forEach(function (filepath) {
-      grunt.verbose.writeln('Adding "' + filepath + '" to the entry file list');
-      b.addEntry(filepath);
-    });
-
-    files = grunt.file.expandFiles(this.data.prepend || []);
-    src = helpers.concat(files, {
-      separator: ''
-    });
-    b.prepend(src);
-
-    files = grunt.file.expandFiles(this.data.append || []);
-    src = helpers.concat(files, {
-      separator: ''
-    });
-    b.append(src);
-
-    if (this.data.hook) {
-      this.data.hook.call(this, b);
-    }
-
-    grunt.file.write(this.file.dest || this.target, b.bundle());
   });
 
 };
