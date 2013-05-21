@@ -16,6 +16,7 @@ var shim = require('browserify-shim');
 module.exports = function (grunt) {
   grunt.registerMultiTask('browserify', 'Grunt task for browserify.', function () {
 
+    var done = this.async();
     var opts = this.options();
 
     grunt.util.async.forEachSeries(this.files, function (file, next) {
@@ -104,6 +105,6 @@ module.exports = function (grunt) {
           next();
         });
 
-    }, this.async());
+    }, done);
   });
 };
