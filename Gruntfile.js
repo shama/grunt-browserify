@@ -3,6 +3,8 @@ module.exports = function (grunt) {
   // Project configuration.
   grunt.initConfig({
 
+    outputFileName: 'largeFiles',
+
     clean: {
       tests: ['tmp']
     },
@@ -90,7 +92,9 @@ module.exports = function (grunt) {
         options: {
           debug: true
         }
-      }
+      },
+
+      'tmp/<%= outputFileName %>.js': ['test/fixtures/large/entry.js']
     },
 
     nodeunit: {
